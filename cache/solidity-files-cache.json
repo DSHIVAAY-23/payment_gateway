@@ -1,0 +1,78 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/data/payment_gateway/contracts/ERC20Permit.sol": {
+      "lastModificationDate": 1762151696586,
+      "contentHash": "1d161d95b4f34614f2dea0d982ee33af",
+      "sourceName": "contracts/ERC20Permit.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "ERC20Permit"
+      ]
+    },
+    "/data/payment_gateway/contracts/GaslessTokenTransfer.sol": {
+      "lastModificationDate": 1762151691185,
+      "contentHash": "1e0fe71a9c4b14345fe630771c068ece",
+      "sourceName": "contracts/GaslessTokenTransfer.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "GaslessTokenTransfer",
+        "IERC20PermitLike"
+      ]
+    }
+  }
+}

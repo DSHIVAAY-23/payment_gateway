@@ -1,0 +1,1 @@
+const b = await ethers.provider.getBlock('latest'); console.log('latest block ts:', b.timestamp, new Date(b.timestamp*1000).toISOString());
