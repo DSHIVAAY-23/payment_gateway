@@ -45,10 +45,10 @@ export default function ConnectButton({ onConnect }) {
     window.ethereum.on('accountsChanged', handlerAccounts);
     window.ethereum.on('chainChanged', handlerChain);
     return () => {
-      try {
+      if (window.ethereum && window.ethereum.removeListener) {
         window.ethereum.removeListener('accountsChanged', handlerAccounts);
         window.ethereum.removeListener('chainChanged', handlerChain);
-      } catch {}
+      }
     };
   }, [onConnect]);
 

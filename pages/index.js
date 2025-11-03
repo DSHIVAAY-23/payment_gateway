@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import ConnectButton from '../components/ConnectButton';
 import Checkout from '../components/Checkout';
 

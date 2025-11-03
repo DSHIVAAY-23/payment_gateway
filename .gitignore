@@ -5,7 +5,14 @@ node_modules/
 .env
 .env.* 
 env/
-node_modules
+
+# Next.js build output
+.next/
+out/
+
+# Hardhat artifacts
+cache/
+artifacts/
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/react
