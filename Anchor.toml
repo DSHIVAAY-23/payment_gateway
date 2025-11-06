@@ -1,0 +1,18 @@
+[programs.localnet]
+gasless_sol = "EkoeaRAyhZ4KwQG1SLPVBPxTS796d1bk3Z4TMaiEur8e"
+
+[programs.devnet]
+gasless_sol = "EkoeaRAyhZ4KwQG1SLPVBPxTS796d1bk3Z4TMaiEur8e"
+
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "anchor test"
+
+

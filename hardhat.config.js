@@ -18,11 +18,14 @@ module.exports = {
     localhost: {
       url: process.env.LOCAL_RPC || 'http://127.0.0.1:8545'
     },
-    // example testnet configuration (uncomment and set env vars to use)
-    // sepolia: {
-    //   url: process.env.TESTNET_RPC,
-    //   accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
-    // }
+    sepolia: {
+      url: process.env.SEPOLIA_RPC || process.env.TESTNET_RPC,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    polygonAmoy: {
+      url: process.env.AMOY_RPC || 'https://amoy-polygon.invalid',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    }
   }
 };
 

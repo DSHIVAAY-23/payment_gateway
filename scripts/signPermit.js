@@ -11,9 +11,9 @@ async function main() {
     throw new Error('TOKEN_ADDRESS and GASLESS_ADDRESS are required (env or CLI).');
   }
 
-  const [relayer, user] = await ethers.getSigners();
-
-  const sender = process.env.SENDER || user.address; // owner of tokens
+  const signers = await ethers.getSigners();
+  const relayer = signers[0];
+  const sender = process.env.SENDER || signers[1]?.address || relayer.address; // owner of tokens
   const receiver = process.env.RECEIVER || relayer.address; // default to relayer for demo
 
   const amountStr = process.env.AMOUNT || '10';
@@ -29,7 +29,8 @@ async function main() {
 
   // Fetch current nonce for the sender
   const nonce = await erc20.nonces(sender);
-  const chainId = await user.getChainId();
+  const net = await ethers.provider.getNetwork();
+  const chainId = net.chainId;
 
   // EIP-712 domain and types for permit
   const domain = {

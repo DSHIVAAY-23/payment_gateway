@@ -3,7 +3,10 @@ require('dotenv').config();
 const { ethers } = require('hardhat');
 
 async function main() {
-  const [relayer, user, receiver] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  const relayer = signers[0];
+  const userAddr = process.env.SENDER || signers[1]?.address || relayer.address;
+  const receiverAddr = process.env.RECEIVER || signers[2]?.address || relayer.address;
 
   console.log('Deploying contracts with relayer:', relayer.address);
 
@@ -14,9 +17,9 @@ async function main() {
 
   // Mint 1000 tokens to the user account for testing (18 decimals)
   const mintAmount = ethers.utils.parseUnits('1000', 18);
-  const mintTx = await token.mint(user.address, mintAmount);
+  const mintTx = await token.mint(userAddr, mintAmount);
   await mintTx.wait();
-  console.log('Minted', mintAmount.toString(), 'to user:', user.address);
+  console.log('Minted', mintAmount.toString(), 'to user:', userAddr);
 
   const Gasless = await ethers.getContractFactory('GaslessTokenTransfer');
   const gasless = await Gasless.deploy();
@@ -28,8 +31,8 @@ async function main() {
   console.log('  export LOCAL_RPC=http://127.0.0.1:8545');
   console.log(`  export TOKEN_ADDRESS=${token.address}`);
   console.log(`  export GASLESS_ADDRESS=${gasless.address}`);
-  console.log(`  export SENDER=${user.address}`);
-  console.log(`  export RECEIVER=${receiver.address}`);
+  console.log(`  export SENDER=${userAddr}`);
+  console.log(`  export RECEIVER=${receiverAddr}`);
   console.log('  # Optional overrides: AMOUNT, FEE, DEADLINE');
   console.log(`  # chainId=${chainId}`);
 }
