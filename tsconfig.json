@@ -7,9 +7,26 @@
     "skipLibCheck": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "jsx": "preserve"
   },
-  "include": ["tests/**/*.ts", "client/**/*.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "client/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
-
 
