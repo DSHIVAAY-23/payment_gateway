@@ -41,7 +41,7 @@ https://sepolia.etherscan.io/tx/0x7a137e1afdc76c5f6fe1f657602547c42a9e15b13eba71
 - `balanceOf(address)` → Returns token balance for an address
 - `nonces(address)` → Returns the current nonce for permit replay protection
 - `DOMAIN_SEPARATOR()` → Returns the EIP-712 domain separator for signature verification
-- `permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)` → Sets allowance via signature (EIP-2612)
+- `permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)` → Sets allowance via signature (EIP-261dracosahil1792)
 - `transferFrom(address from, address to, uint256 value)` → Transfers tokens from one address to another
 
 **Role in Gasless Flow**:

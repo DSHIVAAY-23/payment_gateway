@@ -25,6 +25,11 @@ module.exports = {
     polygonAmoy: {
       url: process.env.AMOY_RPC || 'https://amoy-polygon.invalid',
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    polygon: {
+      url: process.env.POLYGON_RPC || process.env.MATIC_RPC || 'https://polygon-rpc.com',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 137
     }
   }
 };

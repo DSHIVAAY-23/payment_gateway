@@ -155,8 +155,25 @@ async function main() {
 
   // Now relay it
   console.log('\n--- Relaying Transaction ---');
-  const [relayer] = await ethers.getSigners();
+  
+  // Use separate relayer account if RELAYER_PRIVATE_KEY is provided
+  let relayer;
+  if (process.env.RELAYER_PRIVATE_KEY) {
+    relayer = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+    console.log('Using separate relayer account from RELAYER_PRIVATE_KEY');
+  } else {
+    const [defaultRelayer] = await ethers.getSigners();
+    relayer = defaultRelayer;
+    console.log('Using first Hardhat signer as relayer (set RELAYER_PRIVATE_KEY for separate account)');
+  }
   console.log('Relayer address:', relayer.address);
+  
+  // Verify relayer has ETH for gas
+  const relayerBalance = await provider.getBalance(relayer.address);
+  console.log(`Relayer ETH balance: ${ethers.utils.formatEther(relayerBalance)} ETH`);
+  if (relayerBalance.lt(ethers.utils.parseEther('0.001'))) {
+    console.warn('⚠️  Warning: Relayer has low ETH balance. May fail to pay gas.');
+  }
 
   const gasless = await ethers.getContractAt('GaslessTokenTransfer', GASLESS_ADDRESS);
   const tokenContract = await ethers.getContractAt('ERC20Permit', PYUSD_ADDRESS);
