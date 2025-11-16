@@ -1,0 +1,11 @@
+{
+  "authorization": {
+    "from": "0x329b06f125dAFf5Bd16CCB7b3906227e50C18bB2",
+    "to": "0x06deedD21AfE4ae6BFb443A4f560aD13d81e05a7",
+    "value": "10000",
+    "validAfter": "0",
+    "validBefore": "1735689600",
+    "nonce": "0x8e9f8b5ff9c9c1d8a4b1f3a8e2b0c7d1a9c6b5f4d3e2f1a0b9c8d7e6f5a4b3c2"
+  },
+  "signature": "0x..." 
+}
