@@ -43,6 +43,7 @@ async function main() {
     ],
     PermitBatchTransferFrom: [
       { name: 'permitted', type: 'TokenPermissions[]' },
+      { name: 'spender', type: 'address' },
       { name: 'nonce', type: 'uint256' },
       { name: 'deadline', type: 'uint256' },
     ],
@@ -53,6 +54,12 @@ async function main() {
     permitted: [{ token: USDT, amount: amountBN.toString() }],
     nonce: nonce,
     deadline: deadline,
+  };
+
+  // Permit typed-data includes the spender (gateway). This must match the actual caller.
+  const permitForSig = {
+    ...permit,
+    spender: GATEWAY,
   };
 
   // Transfer details instruct Permit2 how much to pull and where
@@ -67,7 +74,7 @@ async function main() {
   console.log('Amount:', AMOUNT, `(wei ${amountBN.toString()})`);
   console.log('Signing Permit2 typed data...');
 
-  const signature = await wallet._signTypedData(domain, types, permit);
+  const signature = await wallet._signTypedData(domain, types, permitForSig);
 
   const out = {
     gateway: GATEWAY,

@@ -299,11 +299,12 @@ npx hardhat run scripts/deployGaslessDualFee.js --network sepolia
 # 2. Sign permit
 export GASLESS_ADDRESS="0xC2E1C8C560a85d8C21C51f37086E3656b69562a0"
 export AMOUNT="10"
-export RECEIVER="0x..."
+export RECEIVER="0x962BCade250166993e547DA3922E1B08B1309196"
+export SENDER="0x483089BfAdF65a08F1be109b42A9aae8535B75ee"
 node scripts/signPermit_dual_fee.js
 
 # 3. Relayer sends
-export RELAYER_PRIVATE_KEY="0x..."
+export RELAYER_PRIVATE_KEY="0xe323c8254a07f97f6dbf2b3d7fd641a233a62a511eeb6287a19bb681a640a6f0"
 npx hardhat run scripts/relayer_send_dual_fee.js --network sepolia
 ```
 

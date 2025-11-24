@@ -1,0 +1,300 @@
+{
+  "address": "9wnLiHURHXvYF6AuggZBX4FXPUkwjWMtCWFzosDB3ugh",
+  "metadata": {
+    "name": "gasless_sol",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Anchor program for gasless-like escrow transfers"
+  },
+  "instructions": [
+    {
+      "name": "initialize_escrow",
+      "discriminator": [
+        243,
+        160,
+        77,
+        153,
+        11,
+        92,
+        48,
+        209
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_ata"
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "relayed_transfer",
+      "discriminator": [
+        226,
+        64,
+        225,
+        4,
+        82,
+        52,
+        14,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "relayer"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "pda"
+        },
+        {
+          "name": "escrow_ata",
+          "writable": true
+        },
+        {
+          "name": "receiver_ata",
+          "writable": true
+        },
+        {
+          "name": "relayer_ata",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "sysvar_instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "fee",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        },
+        {
+          "name": "sig_pubkey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "_sig",
+          "type": "bytes"
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EscrowState",
+      "discriminator": [
+        19,
+        90,
+        148,
+        111,
+        55,
+        130,
+        229,
+        108
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "GaslessPayment",
+      "discriminator": [
+        183,
+        210,
+        71,
+        217,
+        165,
+        149,
+        130,
+        217
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "DeadlineExpired",
+      "msg": "Deadline expired"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidNonce",
+      "msg": "Invalid or replayed nonce"
+    },
+    {
+      "code": 6002,
+      "name": "SignatureMessageMismatch",
+      "msg": "Signature message does not match expected"
+    },
+    {
+      "code": 6003,
+      "name": "SignaturePubkeyMismatch",
+      "msg": "Signature pubkey does not match expected"
+    },
+    {
+      "code": 6004,
+      "name": "OwnerPubkeyMismatch",
+      "msg": "Owner pubkey mismatch"
+    }
+  ],
+  "types": [
+    {
+      "name": "EscrowState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "last_nonce",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GaslessPayment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiver",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "relayer",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

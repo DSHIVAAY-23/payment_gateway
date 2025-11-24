@@ -26,6 +26,7 @@
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.95.3",
     "@uniswap/permit2": "github:Uniswap/permit2",
+    "@uniswap/permit2-sdk": "^1.4.0",
     "bn.js": "^5.2.1",
     "buffer": "^6.0.3",
     "next": "^14.2.5",

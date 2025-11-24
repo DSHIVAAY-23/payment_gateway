@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const hre = require('hardhat');
 
+const ERC20_ABI = [
+  'function allowance(address owner, address spender) view returns (uint256)',
+];
+
 async function main() {
   const filePath = process.env.PERMIT_JSON_PATH || path.join(process.cwd(), 'out', 'permit2_usdt.json');
   if (!fs.existsSync(filePath)) {
@@ -30,6 +34,25 @@ async function main() {
   const owner = raw.owner;
   const signature = raw.signature;
   const receiver = raw.receiver;
+  const tokenAddr = permit?.permitted?.[0]?.token;
+  const amount = hre.ethers.BigNumber.from(permit?.permitted?.[0]?.amount || 0);
+
+  if (!tokenAddr) throw new Error('Permit JSON missing token address');
+  if (amount.isZero()) throw new Error('Permit JSON amount is zero');
+
+  const permit2Address = await gateway.PERMIT2();
+  const token = new hre.ethers.Contract(tokenAddr, ERC20_ABI, hre.ethers.provider);
+  const allowance = await token.allowance(owner, permit2Address);
+  if (allowance.lt(amount)) {
+    console.error('\n✗ Owner has not approved Permit2 for the requested amount.');
+    console.error('  token      :', tokenAddr);
+    console.error('  owner      :', owner);
+    console.error('  permit2    :', permit2Address);
+    console.error('  allowance  :', allowance.toString());
+    console.error('  needed     :', amount.toString());
+    console.error('\nHave the owner run token.approve(PERMIT2, amount) before retrying.\n');
+    throw new Error('Insufficient Permit2 allowance');
+  }
 
   console.log('\n--- Calling sendWithPermit2DualCollection ---');
   console.log('Gateway   :', gatewayAddr);
@@ -53,6 +76,8 @@ async function main() {
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
+
+
 
 
 

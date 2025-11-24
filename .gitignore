@@ -35,3 +35,8 @@ thumb
 sketch
 
 # End of https://www.toptal.com/developers/gitignore/api/react
+# Ignore build artifacts and large archives
+programs.zip
+programs/gasless_sol/target/
+target/
+**/target/
