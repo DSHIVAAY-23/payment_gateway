@@ -42,10 +42,8 @@ async function main() {
   const r = raw.r;
   const s = raw.s;
 
-  // Get fee and cut BPS from permit or contract
-  const feeBps = raw.feeBps || (await gateway.feeBps()).toNumber();
+  // Get cut BPS from permit or contract
   const cutBps = raw.cutBps || (await gateway.cutBps()).toNumber();
-  const feeCollector = await gateway.feeCollector();
   const cutCollector = await gateway.cutCollector();
 
   console.log('\n--- Transaction Details ---');
@@ -53,9 +51,7 @@ async function main() {
   console.log('Sender:', sender);
   console.log('Receiver (Merchant):', receiver);
   console.log('Amount:', amount);
-  console.log('Fee BPS:', feeBps);
   console.log('Cut BPS:', cutBps);
-  console.log('Fee Collector:', feeCollector);
   console.log('Cut Collector:', cutCollector);
   console.log('Deadline:', deadline);
 
@@ -87,13 +83,13 @@ async function main() {
     console.log('Sender:', event.args.sender);
     console.log('Receiver:', event.args.receiver);
     console.log('Amount:', event.args.amount.toString());
-    console.log('Fee:', event.args.fee.toString());
     console.log('Cut:', event.args.cut.toString());
     console.log('Relayer:', event.args.relayer);
   }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
+
 
 
 

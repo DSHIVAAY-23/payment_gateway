@@ -1,14 +1,29 @@
 // scripts/solana_init_pyusd.ts
-// Initialize escrow for PYUSD on devnet
-import * as anchor from '@coral-xyz/anchor';
-import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
-import { getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync } from '@solana/spl-token';
+// Initialize escrow for PYUSD on devnet (no Anchor.Program, pure web3.js)
+
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
+} from '@solana/web3.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Program + mint from your runbook / IDL
 const PROGRAM_ID = new PublicKey('9wnLiHURHXvYF6AuggZBX4FXPUkwjWMtCWFzosDB3ugh');
 const PYUSD_MINT = new PublicKey('CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM');
 const DEVNET_RPC = 'https://api.devnet.solana.com';
+
+// Discriminator for initialize_escrow from gasless_sol.json IDL
+// "initialize_escrow" → discriminator: [243,160,77,153,11,92,48,209]
+const INITIALIZE_ESCROW_DISCRIMINATOR = Buffer.from([
+  243, 160, 77, 153, 11, 92, 48, 209,
+]);
 
 async function main() {
   const args = process.argv.slice(2);
@@ -18,85 +33,44 @@ async function main() {
     process.exit(1);
   }
 
+  // Load owner keypair
   const keypairPath = args[0].replace('~', process.env.HOME || '');
   const keypairData = JSON.parse(fs.readFileSync(keypairPath, 'utf8'));
   const owner = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-  
-  const connection = new Connection(DEVNET_RPC, 'confirmed');
-  const wallet = new anchor.Wallet(owner);
-  const provider = new anchor.AnchorProvider(connection, wallet, {});
-  anchor.setProvider(provider);
 
-  // Load IDL and create program
-  let program: any;
-  const idlPath = path.join(process.cwd(), 'target', 'idl', 'gasless_sol.json');
-  if (fs.existsSync(idlPath)) {
-    console.log('Loading IDL from file...');
-    const idlData = JSON.parse(fs.readFileSync(idlPath, 'utf8'));
-    // Anchor expects the IDL in a specific format - ensure address is at root level
-    if (idlData.address) {
-      // IDL format is correct
-    } else if (idlData.metadata?.address) {
-      // Move address to root
-      idlData.address = idlData.metadata.address;
-    }
-    try {
-      // @ts-ignore - TypeScript type issues with Anchor Program
-      program = new anchor.Program(idlData, PROGRAM_ID, provider);
-    } catch (e: any) {
-      console.error('Failed to load IDL:', e.message);
-      console.log('Trying to fetch IDL from chain instead...');
-      const idl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
-      if (!idl) {
-        console.error('Failed to fetch IDL from chain. Make sure program is deployed.');
-        process.exit(1);
-      }
-      // @ts-ignore
-      program = new anchor.Program(idl, PROGRAM_ID, provider);
-    }
-  } else {
-    console.log('IDL file not found, trying to fetch from chain...');
-    const idl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
-    if (!idl) {
-      console.error('Failed to fetch IDL. Make sure program is deployed.');
-      console.error('You may need to run: anchor build');
-      process.exit(1);
-    }
-    // @ts-ignore
-    program = new anchor.Program(idl, PROGRAM_ID, provider);
-  }
+  const connection = new Connection(DEVNET_RPC, 'confirmed');
 
   console.log('Owner:', owner.publicKey.toBase58());
   console.log('PYUSD Mint:', PYUSD_MINT.toBase58());
   console.log('Program ID:', PROGRAM_ID.toBase58());
 
-  // Derive PDAs
+  // Derive PDAs (same seeds as in your IDL)
   const [escrowPda, pdaBump] = PublicKey.findProgramAddressSync(
     [Buffer.from('escrow'), owner.publicKey.toBuffer(), PYUSD_MINT.toBuffer()],
-    PROGRAM_ID
+    PROGRAM_ID,
   );
   const [statePda, stateBump] = PublicKey.findProgramAddressSync(
     [Buffer.from('state'), owner.publicKey.toBuffer(), PYUSD_MINT.toBuffer()],
-    PROGRAM_ID
+    PROGRAM_ID,
   );
 
   console.log('\nDerived PDAs:');
   console.log('Escrow PDA:', escrowPda.toBase58());
-  console.log('State PDA:', statePda.toBase58());
-  console.log('PDA Bump:', pdaBump);
+  console.log('State PDA :', statePda.toBase58());
+  console.log('PDA Bump  :', pdaBump);
 
-  // Get or create escrow ATA (owned by PDA)
+  // Escrow ATA (token account owned by escrow PDA)
   const escrowAta = getAssociatedTokenAddressSync(PYUSD_MINT, escrowPda, true);
   console.log('Escrow ATA:', escrowAta.toBase58());
 
+  // Ensure escrow ATA exists
   try {
-    // Check if escrow ATA exists
     const escrowAtaInfo = await connection.getAccountInfo(escrowAta);
     if (!escrowAtaInfo) {
       console.log('\n⚠️  Escrow ATA does not exist yet.');
       console.log('You need to create it first. Run:');
       console.log(`spl-token create-account ${PYUSD_MINT.toBase58()} --owner ${escrowPda.toBase58()}`);
-      console.log('Or use a script to create it programmatically.');
+      console.log('Then re-run this script.');
       process.exit(1);
     }
     console.log('✓ Escrow ATA exists');
@@ -105,7 +79,7 @@ async function main() {
     process.exit(1);
   }
 
-  // Check if state already exists
+  // If state already exists, skip init
   const stateInfo = await connection.getAccountInfo(statePda);
   if (stateInfo) {
     console.log('\n⚠️  State PDA already initialized. Skipping initialization.');
@@ -113,68 +87,70 @@ async function main() {
     process.exit(0);
   }
 
-  // Initialize escrow using manual instruction construction
-  console.log('\nInitializing escrow...');
+  console.log('\nInitializing escrow (manual instruction)...');
+
+  // Build data: 8-byte discriminator + 1-byte bump (matches Rust: initialize_escrow(bump: u8))
+  const data = Buffer.concat([
+    INITIALIZE_ESCROW_DISCRIMINATOR,
+    Buffer.from([pdaBump]), // bump as u8
+  ]);
+
+  // Accounts (must match IDL order):
+  // 1. owner (writable, signer)
+  // 2. mint
+  // 3. pda (escrow PDA)
+  // 4. escrow_ata (writable)
+  // 5. state (writable)
+  // 6. system_program
+  const keys = [
+    { pubkey: owner.publicKey, isWritable: true, isSigner: true },
+    { pubkey: PYUSD_MINT, isWritable: false, isSigner: false },
+    { pubkey: escrowPda, isWritable: false, isSigner: false },
+    { pubkey: escrowAta, isWritable: true, isSigner: false },
+    { pubkey: statePda, isWritable: true, isSigner: false },
+    { pubkey: SystemProgram.programId, isWritable: false, isSigner: false },
+  ];
+
+  const ix = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys,
+    data,
+  });
+
+  const tx = new Transaction().add(ix);
+
   try {
-    // Build instruction data: 8-byte discriminator + 1-byte bump
-    const discriminator = Buffer.from([0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91]); // Placeholder - need actual discriminator
-    // For now, let's use Anchor's instruction builder if we can get the IDL working
-    // Otherwise, we'll need to calculate the discriminator
-    
-    // Try loading IDL and using Program class
-    let program: any;
-    const idlPath = path.join(process.cwd(), 'target', 'idl', 'gasless_sol.json');
-    if (fs.existsSync(idlPath)) {
-      const idl = JSON.parse(fs.readFileSync(idlPath, 'utf8'));
-      // @ts-ignore
-      program = new anchor.Program(idl, PROGRAM_ID, provider);
-    } else {
-      // Fallback: try to fetch from chain
-      const idl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
-      if (idl) {
-        // @ts-ignore
-        program = new anchor.Program(idl, PROGRAM_ID, provider);
-      } else {
-        throw new Error('Could not load IDL. Please run: anchor build');
-      }
-    }
-    
-    const tx = await program.methods.initializeEscrow(pdaBump)
-      .accounts({
-        owner: owner.publicKey,
-        mint: PYUSD_MINT,
-        pda: escrowPda,
-        escrowAta: escrowAta,
-        state: statePda,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-
+    const sig = await sendAndConfirmTransaction(connection, tx, [owner]);
     console.log('✓ Initialization successful!');
-    console.log('Transaction:', tx);
-    console.log('View on Solana Explorer: https://explorer.solana.com/tx/' + tx + '?cluster=devnet');
+    console.log('Transaction:', sig);
+    console.log('View on Solana Explorer: https://explorer.solana.com/tx/' + sig + '?cluster=devnet');
 
-    // Save state info
+    // Save state metadata like before
     const stateDir = path.join(process.cwd(), 'out');
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
     const statePath = path.join(stateDir, 'solana_pyusd_state.json');
-    fs.writeFileSync(statePath, JSON.stringify({
-      owner: owner.publicKey.toBase58(),
-      mint: PYUSD_MINT.toBase58(),
-      escrowPda: escrowPda.toBase58(),
-      escrowAta: escrowAta.toBase58(),
-      statePda: statePda.toBase58(),
-      pdaBump,
-      stateBump,
-      programId: PROGRAM_ID.toBase58(),
-    }, null, 2));
+
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify(
+        {
+          owner: owner.publicKey.toBase58(),
+          mint: PYUSD_MINT.toBase58(),
+          escrowPda: escrowPda.toBase58(),
+          escrowAta: escrowAta.toBase58(),
+          statePda: statePda.toBase58(),
+          pdaBump,
+          stateBump,
+          programId: PROGRAM_ID.toBase58(),
+        },
+        null,
+        2,
+      ),
+    );
+
     console.log('\nSaved state to:', statePath);
   } catch (e: any) {
-    console.error('Initialization failed:', e.message);
-    if (e.logs) {
-      console.error('Program logs:');
-      e.logs.forEach((log: string) => console.error('  ', log));
-    }
+    console.error('Initialization failed:', e.message || e);
     process.exit(1);
   }
 }
@@ -183,4 +159,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-

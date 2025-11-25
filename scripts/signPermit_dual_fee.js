@@ -20,7 +20,6 @@ async function main() {
 
   const RECEIVER = process.env.RECEIVER || wallet.address;
   const AMOUNT_HUMAN = process.env.AMOUNT || '10';
-  const FEE_BPS = process.env.FEE_BPS ? parseInt(process.env.FEE_BPS) : 50;
   const CUT_BPS = process.env.CUT_BPS ? parseInt(process.env.CUT_BPS) : 100;
 
   const token = new ethers.Contract(TOKEN, [
@@ -36,19 +35,17 @@ async function main() {
   const amount = ethers.utils.parseUnits(AMOUNT_HUMAN, decimals);
   const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour
 
-  // Calculate fee and cut for display
-  const fee = (amount.mul(FEE_BPS)).div(10000);
+  // Calculate cut for display
   const cut = (amount.mul(CUT_BPS)).div(10000);
-  const net = amount.sub(fee).sub(cut);
+  const net = amount.sub(cut);
 
-  console.log('=== Permit Signing for Dual Fee Gateway ===');
+  console.log('=== Permit Signing for Gateway ===');
   console.log('Token:', TOKEN, `(${name})`);
   console.log('Gateway:', GATEWAY);
   console.log('Owner:', wallet.address);
   console.log('Receiver (Merchant):', RECEIVER);
   console.log('\n--- Amount Breakdown ---');
   console.log('Total Amount:', AMOUNT_HUMAN, name);
-  console.log('Fee (' + FEE_BPS + ' bps):', ethers.utils.formatUnits(fee, decimals), name);
   console.log('Cut (' + CUT_BPS + ' bps):', ethers.utils.formatUnits(cut, decimals), name);
   console.log('Net to Merchant:', ethers.utils.formatUnits(net, decimals), name);
 
@@ -90,7 +87,6 @@ async function main() {
     owner: wallet.address,
     receiver: RECEIVER,
     amount: amount.toString(),
-    feeBps: FEE_BPS,
     cutBps: CUT_BPS,
     deadline,
     v: sig.v,

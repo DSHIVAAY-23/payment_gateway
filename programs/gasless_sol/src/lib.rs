@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    program_pack::Pack,
-    sysvar::instructions::load_instruction_at_checked,
-};
+use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 
 declare_id!("EkoeaRAyhZ4KwQG1SLPVBPxTS796d1bk3Z4TMaiEur8e");
@@ -43,23 +40,22 @@ pub mod gasless_sol {
         
         // Validate PDA
         let (expected_pda, _bump) = Pubkey::find_program_address(
-            &[b"escrow", state_data.owner.as_ref(), ctx.accounts.mint.key().as_ref()],
+            &[b"escrow", state_data.owner.as_ref(), mint.mint.as_ref()],
             ctx.program_id,
         );
         require_keys_eq!(ctx.accounts.pda.key(), expected_pda);
         
         // Validate state PDA
         let (expected_state, _bump) = Pubkey::find_program_address(
-            &[b"state", state_data.owner.as_ref(), ctx.accounts.mint.key().as_ref()],
+            &[b"state", state_data.owner.as_ref(), mint.mint.as_ref()],
             ctx.program_id,
         );
         require_keys_eq!(ctx.accounts.state.key(), expected_state);
         
         // Validate escrow ATA
-        let mint_pubkey = ctx.accounts.mint.key();
-        require_keys_eq!(escrow_ata.mint, mint_pubkey);
+        require_keys_eq!(escrow_ata.mint, mint.mint);
         require_keys_eq!(escrow_ata.owner, ctx.accounts.pda.key());
-        require_keys_eq!(mint_pubkey, state_data.mint);
+        require_keys_eq!(mint.mint, state_data.mint);
         
         let clock = Clock::get()?;
         require!(deadline >= clock.unix_timestamp, GaslessError::DeadlineExpired);
@@ -96,7 +92,7 @@ pub mod gasless_sol {
         require!(ix_msg == msg.as_slice(), GaslessError::SignatureMessageMismatch);
 
         // Perform token transfers via CPI: amount to receiver, fee to relayer
-        let mint_key = mint_pubkey;
+        let mint_key = mint.mint;
         let (_, pda_bump) = Pubkey::find_program_address(
             &[b"escrow", state_data.owner.as_ref(), mint_key.as_ref()],
             ctx.program_id,
@@ -138,9 +134,9 @@ pub mod gasless_sol {
         // Emit event
         let receiver_ata_data = anchor_spl::token::spl_token::state::Account::unpack(&ctx.accounts.receiver_ata.try_borrow_data()?)?;
         emit!(GaslessPayment {
-            owner: state_data_mut.owner,
+            owner: state_data.owner,
             receiver: receiver_ata_data.owner,
-            token_mint: mint_pubkey,
+            token_mint: mint.mint,
             amount,
             fee,
             relayer: ctx.accounts.relayer.key(),
@@ -204,6 +200,7 @@ pub struct RelayedTransfer<'info> {
 }
 
 #[account]
+#[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct EscrowState {
     pub owner: Pubkey,
     pub mint: Pubkey,

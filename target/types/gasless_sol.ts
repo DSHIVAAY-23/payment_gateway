@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/gasless_sol.json`.
  */
 export type GaslessSol = {
-  "address": "EkoeaRAyhZ4KwQG1SLPVBPxTS796d1bk3Z4TMaiEur8e",
+  "address": "9wnLiHURHXvYF6AuggZBX4FXPUkwjWMtCWFzosDB3ugh",
   "metadata": {
     "name": "gaslessSol",
     "version": "0.1.0",

@@ -73,6 +73,18 @@ async function main() {
   const receipt = await tx.wait();
   console.log('Mined in block:', receipt.blockNumber);
   console.log('Etherscan :', `https://sepolia.etherscan.io/tx/${receipt.transactionHash}`);
+
+  // Parse events
+  const event = receipt.events?.find(e => e.event === 'PulledAndSplit');
+  if (event) {
+    console.log('\n--- PulledAndSplit Event ---');
+    console.log('Token:', event.args.token);
+    console.log('Owner:', event.args.ownerAddr);
+    console.log('Receiver:', event.args.receiver);
+    console.log('Amount:', event.args.amount.toString());
+    console.log('Cut:', event.args.cut.toString());
+    console.log('Relayer:', event.args.relayer);
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
