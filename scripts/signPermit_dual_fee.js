@@ -1,14 +1,18 @@
 // scripts/signPermit_dual_fee.js
 // Builds an EIP-2612 permit for dual fee gateway with value = amount
 
-const fs = require('fs');
-const path = require('path');
-const { ethers } = require('hardhat');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
+import { ethers } from 'ethers';
 
 async function main() {
-  const RPC = process.env.SEPOLIA_RPC || process.env.TESTNET_RPC;
-  const provider = RPC ? new ethers.providers.JsonRpcProvider(RPC) : ethers.provider;
+  const RPC = process.env.SEPOLIA_RPC || process.env.TESTNET_RPC || 'https://sepolia.infura.io/v3/YOUR_KEY';
+  if (!RPC || RPC.includes('YOUR_KEY')) {
+    throw new Error('Set SEPOLIA_RPC or TESTNET_RPC environment variable');
+  }
+  const provider = new ethers.providers.JsonRpcProvider(RPC);
   const PRIVATE_KEY = process.env.PRIVATE_KEY;
   if (!PRIVATE_KEY) throw new Error('Set PRIVATE_KEY');
 

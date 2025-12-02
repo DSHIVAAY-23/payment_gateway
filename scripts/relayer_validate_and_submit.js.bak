@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+dotenv.config();
+
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+} from "@solana/spl-token";
+
+const RPC_URL = process.env.SOLANA_URL || "https://api.devnet.solana.com";
+const conn = new Connection(RPC_URL, "confirmed");
+
+function loadKeypair(keyPath, label) {
+  if (!fs.existsSync(keyPath)) {
+    throw new Error(`${label} keypair not found at ${keyPath}`);
+  }
+  const raw = fs.readFileSync(keyPath, "utf8");
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw)));
+}
+
+function resolveRelayerKey() {
+  if (process.env.RELAYER_KEYPATH) return process.env.RELAYER_KEYPATH;
+  const defaultPath = path.join(process.env.HOME || "", ".config/solana/id.json");
+  if (fs.existsSync(defaultPath)) return defaultPath;
+  const fallback = path.join(process.cwd(), "relayer_dev_keypair.json");
+  if (fs.existsSync(fallback)) return fallback;
+  throw new Error("Relayer keypair not found. Set RELAYER_KEYPATH.");
+}
+
+function decodeTransaction(base64) {
+  const raw = Buffer.from(base64, "base64");
+  try {
+    return Transaction.from(raw);
+  } catch {
+    const vtx = VersionedTransaction.deserialize(raw);
+    const legacyTx = Transaction.from(
+      new TransactionMessage(vtx.message).compileLegacyTransaction().serialize({
+        requireAllSignatures: false,
+      })
+    );
+    legacyTx.signatures = vtx.signatures.map((sig, idx) => ({
+      signature: sig,
+      publicKey: vtx.message.staticAccountKeys[idx],
+    }));
+    return legacyTx;
+  }
+}
+
+async function main() {
+  if (!fs.existsSync("partial_tx.base64")) {
+    throw new Error("partial_tx.base64 not found. Run the builder script first.");
+  }
+  const relayerKeyPath = resolveRelayerKey();
+  const relayerKP = loadKeypair(relayerKeyPath, "Relayer");
+  const feeCollectorPub = process.env.FEE_COLLECTOR_PUBKEY;
+  if (!feeCollectorPub) throw new Error("FEE_COLLECTOR_PUBKEY missing in env");
+  const feeCollector = new PublicKey(feeCollectorPub);
+
+  const merchantPub = new PublicKey(
+    process.argv[2] || process.env.MERCHANT_PUBKEY || relayerKP.publicKey
+  );
+
+  const base64 = fs.readFileSync("partial_tx.base64", "utf8").trim();
+  const tx = decodeTransaction(base64);
+
+  if (!tx.feePayer?.equals(relayerKP.publicKey)) {
+    throw new Error(
+      `feePayer mismatch: tx=${tx.feePayer?.toBase58()} relayer=${relayerKP.publicKey.toBase58()}`
+    );
+  }
+
+  const messageAccounts = tx.instructions.map((ix) => ({
+    programId: ix.programId.toBase58(),
+    keys: ix.keys.map((k) => k.pubkey.toBase58()),
+  }));
+  console.log("Instruction programs:", messageAccounts.map((m) => m.programId));
+
+  const mint = new PublicKey(process.env.MINT_ADDRESS);
+  const tokenProgram = process.env.TOKEN_PROGRAM_ID
+    ? new PublicKey(process.env.TOKEN_PROGRAM_ID)
+    : TOKEN_PROGRAM_ID;
+  const ataProgram = process.env.ASSOCIATED_TOKEN_PROGRAM_ID
+    ? new PublicKey(process.env.ASSOCIATED_TOKEN_PROGRAM_ID)
+    : ASSOCIATED_TOKEN_PROGRAM_ID;
+  const userPub = new PublicKey(process.env.USER_PUBKEY);
+
+  const expectedMerchantAta = await getAssociatedTokenAddress(
+    mint,
+    merchantPub,
+    false,
+    tokenProgram,
+    ataProgram
+  );
+  const expectedFeeAta = await getAssociatedTokenAddress(
+    mint,
+    feeCollector,
+    false,
+    tokenProgram,
+    ataProgram
+  );
+
+  const transferIxs = tx.instructions.filter(
+    (ix) => ix.programId.equals(tokenProgram) && ix.data.length > 0
+  );
+  if (transferIxs.length < 2) {
+    throw new Error("Expected at least two token transfer instructions (merchant + fee).");
+  }
+
+  const decodeAmount = (data) => {
+    // transferChecked layout: 1 byte instruction + 8 bytes amount + 1 byte decimals
+    if (data.length < 1 + 8 + 1) return null;
+    const amount = Number(data.readBigUInt64LE(1));
+    return amount;
+  };
+
+  let merchantAmt = null;
+  let feeAmt = null;
+
+  for (const ix of transferIxs) {
+    const dest = ix.keys[2].pubkey;
+    const owner = ix.keys[3].pubkey;
+    if (!owner.equals(userPub)) {
+      throw new Error("Transfer is not from expected user");
+    }
+    const amount = decodeAmount(ix.data);
+    if (dest.equals(expectedMerchantAta)) {
+      merchantAmt = amount;
+    } else if (dest.equals(expectedFeeAta)) {
+      feeAmt = amount;
+    }
+  }
+
+  if (merchantAmt === null || feeAmt === null) {
+    throw new Error("Could not find both merchant and fee transfers");
+  }
+
+  const total = merchantAmt + feeAmt;
+  const expectedFee = Math.max(1, Math.floor(total / 100));
+  if (feeAmt !== expectedFee) {
+    throw new Error(
+      `Fee amount mismatch. expected=${expectedFee}, found=${feeAmt}`
+    );
+  }
+
+  console.log(
+    `Validated amounts: merchant=${merchantAmt} fee=${feeAmt} total=${total}`
+  );
+
+  // Attach relayer signature before simulation and submission
+  tx.partialSign(relayerKP);
+
+  const simTx = Transaction.from(
+    tx.serialize({
+      requireAllSignatures: false,
+    })
+  );
+  const simResult = await conn.simulateTransaction(simTx, {
+    sigVerify: false,
+    commitment: "confirmed",
+  });
+  if (simResult.value.err) {
+    console.error("Simulation logs:", simResult.value.logs);
+    throw new Error(`Simulation failed: ${JSON.stringify(simResult.value.err)}`);
+  }
+  console.log("Simulation success.");
+
+  const serialized = tx.serialize();
+
+  const sig = await conn.sendRawTransaction(serialized, {
+    skipPreflight: false,
+  });
+  console.log("submitted tx:", sig);
+  const confirmation = await conn.confirmTransaction(sig, "confirmed");
+  console.log("confirmation:", confirmation.value);
+  console.log(
+    `Explorer: https://explorer.solana.com/tx/${sig}?cluster=devnet`
+  );
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+

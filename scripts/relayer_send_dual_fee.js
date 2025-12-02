@@ -1,7 +1,7 @@
 // scripts/relayer_send_dual_fee.js
-const hre = require('hardhat');
-const fs = require('fs');
-const path = require('path');
+import hre from 'hardhat';
+import fs from 'fs';
+import path from 'path';
 
 async function main() {
   const filePath = process.env.PERMIT_JSON_PATH || path.join(process.cwd(), 'out', 'pyusd_permit_dual_fee.json');
