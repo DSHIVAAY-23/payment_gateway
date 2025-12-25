@@ -1,10 +1,11 @@
 // scripts/approve_permit2.js
-const hre = require("hardhat");
-require("dotenv").config();
+import hre from "hardhat";
+import dotenv from "dotenv";
+dotenv.config();
 
 async function main() {
   // Config (or read from env)
-  const tokenAddress = process.env.USDT_ADDRESS || "0xCd56D421E5E623eB12d74712b463E9A336B6f287";
+  const tokenAddress = process.env.TOKEN_ADDRESS || process.env.USDT_ADDRESS || "0xCd56D421E5E623eB12d74712b463E9A336B6f287";
   const spender = process.env.PERMIT2_ADDRESS || "0x000000000022d473030f116ddee9f6b43ac78ba3";
   const ownerPrivateKey = process.env.PRIVATE_KEY; // owner's private key (the address to approve from)
   if (!ownerPrivateKey) throw new Error("Set PRIVATE_KEY in env (owner's key)");

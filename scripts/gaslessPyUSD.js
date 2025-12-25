@@ -1,8 +1,9 @@
 // scripts/gaslessPyUSD.js
-require("dotenv").config();
-const fs = require("fs");
-const path = require("path");
-const { ethers } = require("hardhat");
+import "dotenv/config";
+import fs from "fs";
+import path from "path";
+import hre from "hardhat";
+const { ethers } = hre;
 
 async function main() {
   const RPC = process.env.SEPOLIA_RPC;

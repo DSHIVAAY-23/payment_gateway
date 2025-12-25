@@ -1,31 +1,53 @@
 // scripts/sign_permit2_example.js
 // NOTE: This is a minimal example for local testing. For production, use @uniswap/permit2 SDK to build the exact typed data and signature safely.
 /* eslint-disable no-console */
-const fs = require('fs');
-const path = require('path');
-const { ethers } = require('ethers');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import { ethers } from 'ethers';
+import dotenv from 'dotenv';
+dotenv.config();
 
 async function main() {
   const RPC = process.env.SEPOLIA_RPC;
   const PRIVATE_KEY = process.env.PRIVATE_KEY;
   const PERMIT2_ADDRESS = process.env.PERMIT2_ADDRESS || '0x000000000022D473030F116dDEE9F6B43AC78BA3';
-  const USDT = process.env.USDT_ADDRESS || '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0';
+  const USDT = process.env.TOKEN_ADDRESS || process.env.USDT_ADDRESS || '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0';
   const GATEWAY = process.env.GASLESS_ADDRESS;
-  const RECEIVER = process.env.RECEIVER || process.env.FEE_COLLECTOR || ethers.constants.AddressZero;
+  const RECEIVER = process.env.RECEIVER || process.env.FEE_COLLECTOR || ethers.ZeroAddress;
   const AMOUNT = process.env.AMOUNT || '10';
 
   if (!RPC) throw new Error('Set SEPOLIA_RPC');
   if (!PRIVATE_KEY) throw new Error('Set PRIVATE_KEY');
   if (!GATEWAY) throw new Error('Set GASLESS_ADDRESS (gateway address)');
-  if (!RECEIVER || RECEIVER === ethers.constants.AddressZero) throw new Error('Set RECEIVER');
+  if (!RECEIVER || RECEIVER === ethers.ZeroAddress) throw new Error('Set RECEIVER');
 
   const provider = new ethers.providers.JsonRpcProvider(RPC);
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-  // USDT on Sepolia has 6 decimals
-  const decimals = 6;
+  // Check Permit2 allowance before signing
+  const ERC20_ABI = ['function allowance(address owner, address spender) view returns (uint256)', 'function decimals() view returns (uint8)'];
+  const tokenContract = new ethers.Contract(USDT, ERC20_ABI, provider);
+  const decimals = await tokenContract.decimals();
   const amountBN = ethers.utils.parseUnits(AMOUNT, decimals);
+  const allowance = await tokenContract.allowance(wallet.address, PERMIT2_ADDRESS);
+
+  console.log('\n=== Pre-flight Check ===');
+  console.log('Token:', USDT);
+  console.log('Owner:', wallet.address);
+  console.log('Amount needed:', AMOUNT, `(${amountBN.toString()} smallest units)`);
+  console.log('Current allowance:', ethers.utils.formatUnits(allowance, decimals), `(${allowance.toString()} smallest units)`);
+
+  if (allowance.lt(amountBN)) {
+    console.error('\n❌ ERROR: Insufficient Permit2 allowance!');
+    console.error(`   Required: ${amountBN.toString()}`);
+    console.error(`   Current:  ${allowance.toString()}`);
+    console.error('\n💡 Solution: Run approval first:');
+    console.error('   npx hardhat run scripts/approve_permit2.js --network sepolia');
+    console.error('\n   Or check allowance:');
+    console.error('   node scripts/check_permit2_allowance.js');
+    throw new Error('Insufficient Permit2 allowance. Approve Permit2 first.');
+  }
+  console.log('✅ Allowance sufficient, proceeding with permit signing...\n');
   const nonce = ethers.BigNumber.from(ethers.utils.randomBytes(8)).toString(); // example nonce; SDK will manage nonces
   const deadline = Math.floor(Date.now() / 1000) + 3600;
 

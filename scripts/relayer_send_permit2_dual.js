@@ -1,8 +1,8 @@
 // scripts/relayer_send_permit2_dual.js
 /* eslint-disable no-console */
-const fs = require('fs');
-const path = require('path');
-const hre = require('hardhat');
+import fs from 'fs';
+import path from 'path';
+import hre from 'hardhat';
 
 const ERC20_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)',
